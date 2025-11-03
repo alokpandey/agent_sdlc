@@ -58,13 +58,13 @@ jobs:
 
       - name: Check Quality Gate
         id: quality-gate
-        if: steps.sonar-scan.outcome == 'failure'
+        if: steps.sonar-scan.conclusion == 'failure'
         run: |
           echo "Quality gate failed - creating JIRA ticket"
           exit 1
 
       - name: Create JIRA ticket on failure
-        if: steps.sonar-scan.outcome == 'failure'
+        if: always() && steps.sonar-scan.conclusion == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
