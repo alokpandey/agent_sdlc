@@ -75,15 +75,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const axios = require('axios');
-            
             const jiraUrl = process.env.JIRA_URL;
             const jiraEmail = process.env.JIRA_EMAIL;
             const jiraToken = process.env.JIRA_API_TOKEN;
             const projectKey = process.env.JIRA_PROJECT_KEY;
-            
+
             const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
-            
+
             const issueData = {
               fields: {
                 project: {
@@ -147,23 +145,31 @@ jobs:
                 labels: ["sonarqube", "quality-gate-failure", "auto-generated"]
               }
             };
-            
+
             try {
-              const response = await axios.post(
+              const response = await fetch(
                 `${jiraUrl}/rest/api/3/issue`,
-                issueData,
                 {
+                  method: 'POST',
                   headers: {
                     'Authorization': `Basic ${auth}`,
                     'Content-Type': 'application/json'
-                  }
+                  },
+                  body: JSON.stringify(issueData)
                 }
               );
-              
-              console.log(`JIRA ticket created: ${response.data.key}`);
-              core.setOutput('jira-ticket', response.data.key);
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+              }
+
+              const data = await response.json();
+              console.log(`JIRA ticket created: ${data.key}`);
+              core.setOutput('jira-ticket', data.key);
             } catch (error) {
-              console.error('Failed to create JIRA ticket:', error.response?.data || error.message);
+              console.error('Failed to create JIRA ticket:', error.message);
+              throw error;
             }
         env:
           JIRA_URL: ${{ secrets.JIRA_URL }}
