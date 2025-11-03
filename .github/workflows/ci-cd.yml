@@ -395,7 +395,7 @@ jobs:
                           text: "View in SonarCloud",
                           marks: [{
                             type: "link",
-                            attrs: { href: `https://sonarcloud.io/dashboard?id=alokpandey_agent_sdlc` }
+                            attrs: { href: `https://sonarcloud.io/dashboard?id=${context.repo.owner}_${context.repo.repo}` }
                           }]
                         }
                       ]
