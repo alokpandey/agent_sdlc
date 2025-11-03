@@ -93,7 +93,7 @@ jobs:
           echo "bugs=$BUGS_COUNT" >> $GITHUB_OUTPUT
 
           # Extract bug details and save to output (base64 encoded to handle special characters)
-          BUGS_DETAILS=$(echo "$BUGS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64)
+          BUGS_DETAILS=$(echo "$BUGS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64 -w 0)
           echo "bugs_details=$BUGS_DETAILS" >> $GITHUB_OUTPUT
 
           # Fetch detailed issues - Vulnerabilities
@@ -104,7 +104,7 @@ jobs:
           echo "vulnerabilities=$VULNS_COUNT" >> $GITHUB_OUTPUT
 
           # Extract vulnerability details and save to output (base64 encoded)
-          VULNS_DETAILS=$(echo "$VULNS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64)
+          VULNS_DETAILS=$(echo "$VULNS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64 -w 0)
           echo "vulns_details=$VULNS_DETAILS" >> $GITHUB_OUTPUT
 
           # Fetch detailed issues - Code Smells (limit to top 20)
@@ -115,7 +115,7 @@ jobs:
           echo "code_smells=$CODE_SMELLS_COUNT" >> $GITHUB_OUTPUT
 
           # Extract code smell details (top 20) and save to output (base64 encoded)
-          CODE_SMELLS_DETAILS=$(echo "$CODE_SMELLS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -20 | base64)
+          CODE_SMELLS_DETAILS=$(echo "$CODE_SMELLS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -20 | base64 -w 0)
           echo "code_smells_details=$CODE_SMELLS_DETAILS" >> $GITHUB_OUTPUT
 
           # Fetch Security Hotspots
@@ -126,7 +126,7 @@ jobs:
           echo "security_hotspots=$HOTSPOTS_COUNT" >> $GITHUB_OUTPUT
 
           # Extract security hotspot details and save to output (base64 encoded)
-          HOTSPOTS_DETAILS=$(echo "$HOTSPOTS_RESPONSE" | jq -r '.hotspots[]? | "[\(.vulnerabilityProbability)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64)
+          HOTSPOTS_DETAILS=$(echo "$HOTSPOTS_RESPONSE" | jq -r '.hotspots[]? | "[\(.vulnerabilityProbability)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50 | base64 -w 0)
           echo "hotspots_details=$HOTSPOTS_DETAILS" >> $GITHUB_OUTPUT
 
       - name: Check Quality Gate
