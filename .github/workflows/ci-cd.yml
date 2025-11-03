@@ -165,7 +165,7 @@ jobs:
               const codeSmellsDetailsB64 = process.env.CODE_SMELLS_DETAILS || '';
               const hotspotsDetailsB64 = process.env.HOTSPOTS_DETAILS || '';
 
-              console.log(`Base64 lengths - Bugs: ${bugsDetailsB64.length}, Vulns: ${vulnsDetailsB64.length}, Code Smells: ${codeSmellsDetailsB64.length}, Hotspots: ${hotspotsDetailsB64.length}`);
+              console.log("Base64 lengths - Bugs: " + bugsDetailsB64.length + ", Vulns: " + vulnsDetailsB64.length + ", Code Smells: " + codeSmellsDetailsB64.length + ", Hotspots: " + hotspotsDetailsB64.length);
 
               // Decode base64 and split into lines
               const bugsDetailsText = bugsDetailsB64 ? Buffer.from(bugsDetailsB64, 'base64').toString('utf8') : '';
@@ -178,13 +178,13 @@ jobs:
               codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split('\n').filter(line => line.trim()) : [];
               hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split('\n').filter(line => line.trim()) : [];
 
-              console.log(`Found ${bugsDetails.length} bugs, ${vulnsDetails.length} vulnerabilities, ${codeSmellsDetails.length} code smells, ${hotspotsDetails.length} security hotspots`);
+              console.log("Found " + bugsDetails.length + " bugs, " + vulnsDetails.length + " vulnerabilities, " + codeSmellsDetails.length + " code smells, " + hotspotsDetails.length + " security hotspots");
             } catch (error) {
               console.error('Error decoding issue details:', error.message);
               console.error('Stack:', error.stack);
             }
 
-            const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
+            const auth = Buffer.from(jiraEmail + ":" + jiraToken).toString('base64');
 
             // Helper function to create issue list items
             const createIssueListItems = (issues) => {
@@ -209,7 +209,7 @@ jobs:
                 content: [
                   { type: "text", text: "SonarQube quality gate ", marks: [{ type: "strong" }] },
                   { type: "text", text: qgStatus, marks: [{ type: "strong" }, { type: "textColor", attrs: { color: "#DE350B" } }] },
-                  { type: "text", text: ` for commit ${context.sha.substring(0, 7)}` }
+                  { type: "text", text: " for commit " + context.sha.substring(0, 7) }
                 ]
               },
               {
@@ -269,7 +269,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: `🐛 Bugs (${bugs})` }]
+                content: [{ type: "text", text: "🐛 Bugs (" + bugs + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -282,7 +282,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: `🔒 Vulnerabilities (${vulnerabilities})` }]
+                content: [{ type: "text", text: "🔒 Vulnerabilities (" + vulnerabilities + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -295,7 +295,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: `⚠️ Security Hotspots (${securityHotspots})` }]
+                content: [{ type: "text", text: "⚠️ Security Hotspots (" + securityHotspots + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -305,7 +305,7 @@ jobs:
 
             // Add detailed code smells section (showing top 20)
             if (codeSmellsDetails.length > 0) {
-              const codeSmellsTitle = codeSmells > 20 ? `💡 Code Smells (showing 20 of ${codeSmells})` : `💡 Code Smells (${codeSmells})`;
+              const codeSmellsTitle = codeSmells > 20 ? "💡 Code Smells (showing 20 of " + codeSmells + ")" : "💡 Code Smells (" + codeSmells + ")";
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
@@ -333,7 +333,7 @@ jobs:
                       type: "paragraph",
                       content: [
                         { type: "text", text: "Repository: ", marks: [{ type: "strong" }] },
-                        { type: "text", text: `${context.repo.owner}/${context.repo.repo}` }
+                        { type: "text", text: context.repo.owner + "/" + context.repo.repo }
                       ]
                     }]
                   },
@@ -375,10 +375,10 @@ jobs:
                         { type: "text", text: "GitHub Action: ", marks: [{ type: "strong" }] },
                         {
                           type: "text",
-                          text: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                          text: context.serverUrl + "/" + context.repo.owner + "/" + context.repo.repo + "/actions/runs/" + context.runId,
                           marks: [{
                             type: "link",
-                            attrs: { href: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` }
+                            attrs: { href: context.serverUrl + "/" + context.repo.owner + "/" + context.repo.repo + "/actions/runs/" + context.runId }
                           }]
                         }
                       ]
@@ -410,7 +410,7 @@ jobs:
                 project: {
                   key: projectKey
                 },
-                summary: `SonarQube Quality Gate Failed - ${context.repo.repo} - ${context.sha.substring(0, 7)}`,
+                summary: "SonarQube Quality Gate Failed - " + context.repo.repo + " - " + context.sha.substring(0, 7),
                 description: {
                   type: "doc",
                   version: 1,
@@ -425,11 +425,11 @@ jobs:
 
             try {
               const response = await fetch(
-                `${jiraUrl}/rest/api/3/issue`,
+                jiraUrl + "/rest/api/3/issue",
                 {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Basic ${auth}`,
+                    'Authorization': 'Basic ' + auth,
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify(issueData)
@@ -438,11 +438,11 @@ jobs:
 
               if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                throw new Error("HTTP " + response.status + ": " + errorText);
               }
 
               const data = await response.json();
-              console.log(`JIRA ticket created: ${data.key}`);
+              console.log("JIRA ticket created: " + data.key);
               core.setOutput('jira-ticket', data.key);
             } catch (error) {
               console.error('Failed to create JIRA ticket:', error.message);
