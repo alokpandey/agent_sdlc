@@ -85,25 +85,45 @@ jobs:
           STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status // "UNKNOWN"')
           echo "quality_gate_status=$STATUS" >> $GITHUB_OUTPUT
 
-          # Extract failed conditions
-          FAILED_CONDITIONS=$(echo "$RESPONSE" | jq -r '.projectStatus.conditions[] | select(.status == "ERROR") | "- \(.metricKey): \(.actualValue) (threshold: \(.errorThreshold))"' | head -10)
+          # Fetch detailed issues - Bugs
+          BUGS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=alokpandey_agent_sdlc&resolved=false&types=BUG&ps=50")
 
-          # Save to file for multiline output
-          echo "$FAILED_CONDITIONS" > /tmp/failed_conditions.txt
+          BUGS_COUNT=$(echo "$BUGS_RESPONSE" | jq -r '.total // 0')
+          echo "bugs=$BUGS_COUNT" >> $GITHUB_OUTPUT
 
-          # Also get issue counts
-          ISSUES=$(curl -s -u "$SONAR_TOKEN:" \
-            "https://sonarcloud.io/api/issues/search?componentKeys=alokpandey_agent_sdlc&resolved=false&ps=1&facets=severities,types")
+          # Extract bug details
+          echo "$BUGS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/bugs.txt
 
-          BUGS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "BUG") | .count // 0')
-          VULNERABILITIES=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "VULNERABILITY") | .count // 0')
-          CODE_SMELLS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "CODE_SMELL") | .count // 0')
-          SECURITY_HOTSPOTS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "SECURITY_HOTSPOT") | .count // 0')
+          # Fetch detailed issues - Vulnerabilities
+          VULNS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=alokpandey_agent_sdlc&resolved=false&types=VULNERABILITY&ps=50")
 
-          echo "bugs=$BUGS" >> $GITHUB_OUTPUT
-          echo "vulnerabilities=$VULNERABILITIES" >> $GITHUB_OUTPUT
-          echo "code_smells=$CODE_SMELLS" >> $GITHUB_OUTPUT
-          echo "security_hotspots=$SECURITY_HOTSPOTS" >> $GITHUB_OUTPUT
+          VULNS_COUNT=$(echo "$VULNS_RESPONSE" | jq -r '.total // 0')
+          echo "vulnerabilities=$VULNS_COUNT" >> $GITHUB_OUTPUT
+
+          # Extract vulnerability details
+          echo "$VULNS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/vulnerabilities.txt
+
+          # Fetch detailed issues - Code Smells (limit to top 20)
+          CODE_SMELLS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=alokpandey_agent_sdlc&resolved=false&types=CODE_SMELL&ps=20")
+
+          CODE_SMELLS_COUNT=$(echo "$CODE_SMELLS_RESPONSE" | jq -r '.total // 0')
+          echo "code_smells=$CODE_SMELLS_COUNT" >> $GITHUB_OUTPUT
+
+          # Extract code smell details (top 20)
+          echo "$CODE_SMELLS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/code_smells.txt
+
+          # Fetch Security Hotspots
+          HOTSPOTS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/hotspots/search?projectKey=alokpandey_agent_sdlc&ps=50")
+
+          HOTSPOTS_COUNT=$(echo "$HOTSPOTS_RESPONSE" | jq -r '.paging.total // 0')
+          echo "security_hotspots=$HOTSPOTS_COUNT" >> $GITHUB_OUTPUT
+
+          # Extract security hotspot details
+          echo "$HOTSPOTS_RESPONSE" | jq -r '.hotspots[]? | "[\(.vulnerabilityProbability)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/security_hotspots.txt
 
       - name: Check Quality Gate
         id: quality-gate
@@ -117,6 +137,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const jiraUrl = process.env.JIRA_URL;
             const jiraEmail = process.env.JIRA_EMAIL;
             const jiraToken = process.env.JIRA_API_TOKEN;
@@ -129,7 +150,45 @@ jobs:
             const codeSmells = process.env.CODE_SMELLS || '0';
             const securityHotspots = process.env.SECURITY_HOTSPOTS || '0';
 
+            // Read detailed issue information from files
+            let bugsDetails = [];
+            let vulnsDetails = [];
+            let codeSmellsDetails = [];
+            let hotspotsDetails = [];
+
+            try {
+              if (fs.existsSync('/tmp/bugs.txt')) {
+                const bugsText = fs.readFileSync('/tmp/bugs.txt', 'utf8').trim();
+                if (bugsText) bugsDetails = bugsText.split('\n').filter(line => line.trim());
+              }
+              if (fs.existsSync('/tmp/vulnerabilities.txt')) {
+                const vulnsText = fs.readFileSync('/tmp/vulnerabilities.txt', 'utf8').trim();
+                if (vulnsText) vulnsDetails = vulnsText.split('\n').filter(line => line.trim());
+              }
+              if (fs.existsSync('/tmp/code_smells.txt')) {
+                const codeSmellsText = fs.readFileSync('/tmp/code_smells.txt', 'utf8').trim();
+                if (codeSmellsText) codeSmellsDetails = codeSmellsText.split('\n').filter(line => line.trim());
+              }
+              if (fs.existsSync('/tmp/security_hotspots.txt')) {
+                const hotspotsText = fs.readFileSync('/tmp/security_hotspots.txt', 'utf8').trim();
+                if (hotspotsText) hotspotsDetails = hotspotsText.split('\n').filter(line => line.trim());
+              }
+            } catch (error) {
+              console.log('Error reading issue details:', error.message);
+            }
+
             const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
+
+            // Helper function to create issue list items
+            const createIssueListItems = (issues) => {
+              return issues.map(issue => ({
+                type: "listItem",
+                content: [{
+                  type: "paragraph",
+                  content: [{ type: "text", text: issue }]
+                }]
+              }));
+            };
 
             // Build description content
             const descriptionContent = [
@@ -196,6 +255,63 @@ jobs:
                   }
                 ]
               },
+            ];
+
+            // Add detailed bugs section if there are bugs
+            if (bugsDetails.length > 0) {
+              descriptionContent.push({
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: `🐛 Bugs (${bugs})` }]
+              });
+              descriptionContent.push({
+                type: "bulletList",
+                content: createIssueListItems(bugsDetails)
+              });
+            }
+
+            // Add detailed vulnerabilities section if there are vulnerabilities
+            if (vulnsDetails.length > 0) {
+              descriptionContent.push({
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: `🔒 Vulnerabilities (${vulnerabilities})` }]
+              });
+              descriptionContent.push({
+                type: "bulletList",
+                content: createIssueListItems(vulnsDetails)
+              });
+            }
+
+            // Add detailed security hotspots section if there are hotspots
+            if (hotspotsDetails.length > 0) {
+              descriptionContent.push({
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: `⚠️ Security Hotspots (${securityHotspots})` }]
+              });
+              descriptionContent.push({
+                type: "bulletList",
+                content: createIssueListItems(hotspotsDetails)
+              });
+            }
+
+            // Add detailed code smells section (showing top 20)
+            if (codeSmellsDetails.length > 0) {
+              const codeSmellsTitle = codeSmells > 20 ? `💡 Code Smells (showing 20 of ${codeSmells})` : `💡 Code Smells (${codeSmells})`;
+              descriptionContent.push({
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: codeSmellsTitle }]
+              });
+              descriptionContent.push({
+                type: "bulletList",
+                content: createIssueListItems(codeSmellsDetails)
+              });
+            }
+
+            // Add repository details section
+            descriptionContent.push(
               {
                 type: "heading",
                 attrs: { level: 3 },
