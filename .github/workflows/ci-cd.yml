@@ -50,21 +50,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          set +e
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=alokpandey_agent_sdlc \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.qualitygate.wait=true
+          SONAR_EXIT_CODE=$?
+          echo "sonar_exit_code=$SONAR_EXIT_CODE" >> $GITHUB_OUTPUT
+          exit $SONAR_EXIT_CODE
 
       - name: Check Quality Gate
         id: quality-gate
-        if: steps.sonar-scan.conclusion == 'failure'
+        if: steps.sonar-scan.outputs.sonar_exit_code != '0'
         run: |
           echo "Quality gate failed - creating JIRA ticket"
           exit 1
 
       - name: Create JIRA ticket on failure
-        if: always() && steps.sonar-scan.conclusion == 'failure'
+        if: always() && steps.sonar-scan.outputs.sonar_exit_code != '0'
         uses: actions/github-script@v7
         with:
           script: |
