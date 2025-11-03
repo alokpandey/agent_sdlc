@@ -1,3 +1,15 @@
+// GitHub context from environment variables
+const context = {
+  repo: {
+    owner: process.env.GITHUB_REPOSITORY.split("/")[0],
+    repo: process.env.GITHUB_REPOSITORY.split("/")[1]
+  },
+  ref: process.env.GITHUB_REF,
+  sha: process.env.GITHUB_SHA,
+  serverUrl: process.env.GITHUB_SERVER_URL || "https://github.com",
+  runId: process.env.GITHUB_RUN_ID
+};
+
 const jiraUrl = process.env.JIRA_URL;
 const jiraEmail = process.env.JIRA_EMAIL;
 const jiraToken = process.env.JIRA_API_TOKEN;
@@ -300,9 +312,9 @@ try {
 
   const data = await response.json();
   console.log("JIRA ticket created: " + data.key);
-  core.setOutput("jira-ticket", data.key);
+  console.log("::set-output name=jira-ticket::" + data.key);
 } catch (error) {
   console.error("Failed to create JIRA ticket:", error.message);
-  throw error;
+  process.exit(1);
 }
 
