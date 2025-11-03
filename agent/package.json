@@ -1,0 +1,23 @@
+{
+  "name": "jira-monitor-agent",
+  "version": "1.0.0",
+  "description": "Agent that monitors JIRA tickets and automatically creates fixes for SonarQube issues",
+  "main": "jira-monitor-agent.js",
+  "scripts": {
+    "start": "node jira-monitor-agent.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "jira",
+    "sonarqube",
+    "automation",
+    "ci-cd"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "@octokit/rest": "^20.0.2"
+  }
+}
+

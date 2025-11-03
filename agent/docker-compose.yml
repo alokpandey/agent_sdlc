@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  jira-monitor-agent:
+    build: .
+    container_name: jira-monitor-agent
+    restart: unless-stopped
+    environment:
+      - JIRA_URL=${JIRA_URL}
+      - JIRA_EMAIL=${JIRA_EMAIL}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
+      - POLL_INTERVAL=${POLL_INTERVAL:-60000}
+    env_file:
+      - .env
+
