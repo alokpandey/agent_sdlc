@@ -58,7 +58,10 @@ jobs:
             -Dsonar.qualitygate.wait=true
           SONAR_EXIT_CODE=$?
           echo "sonar_exit_code=$SONAR_EXIT_CODE" >> $GITHUB_OUTPUT
-          exit $SONAR_EXIT_CODE
+          if [ $SONAR_EXIT_CODE -ne 0 ]; then
+            echo "SonarQube quality gate failed with exit code $SONAR_EXIT_CODE"
+            exit 1
+          fi
 
       - name: Check Quality Gate
         id: quality-gate
