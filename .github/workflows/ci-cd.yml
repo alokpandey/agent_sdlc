@@ -44,6 +44,8 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       
       - name: Build and analyze
+        id: sonar-scan
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -53,16 +55,13 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.qualitygate.wait=true
-      
+
       - name: Check Quality Gate
         id: quality-gate
-        continue-on-error: true
+        if: steps.sonar-scan.outcome == 'failure'
         run: |
-          # This step will fail if quality gate fails
-          if [ $? -ne 0 ]; then
-            echo "Quality gate failed"
-            exit 1
-          fi
+          echo "Quality gate failed - creating JIRA ticket"
+          exit 1
       
       - name: Create JIRA ticket on failure
         if: failure()
