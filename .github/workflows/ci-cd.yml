@@ -343,7 +343,7 @@ jobs:
                       type: "paragraph",
                       content: [
                         { type: "text", text: "Branch: ", marks: [{ type: "strong" }] },
-                        { type: "text", text: context.ref.replace('refs/heads/', '') }
+                        { type: "text", text: context.ref.replace("refs/heads/", "") }
                       ]
                     }]
                   },
