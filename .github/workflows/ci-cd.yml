@@ -154,23 +154,35 @@ jobs:
             const securityHotspots = process.env.SECURITY_HOTSPOTS || '0';
 
             // Get detailed issue information from environment variables (base64 encoded)
-            const bugsDetailsB64 = process.env.BUGS_DETAILS || '';
-            const vulnsDetailsB64 = process.env.VULNS_DETAILS || '';
-            const codeSmellsDetailsB64 = process.env.CODE_SMELLS_DETAILS || '';
-            const hotspotsDetailsB64 = process.env.HOTSPOTS_DETAILS || '';
+            let bugsDetails = [];
+            let vulnsDetails = [];
+            let codeSmellsDetails = [];
+            let hotspotsDetails = [];
 
-            // Decode base64 and split into lines
-            const bugsDetailsText = bugsDetailsB64 ? Buffer.from(bugsDetailsB64, 'base64').toString('utf8') : '';
-            const vulnsDetailsText = vulnsDetailsB64 ? Buffer.from(vulnsDetailsB64, 'base64').toString('utf8') : '';
-            const codeSmellsDetailsText = codeSmellsDetailsB64 ? Buffer.from(codeSmellsDetailsB64, 'base64').toString('utf8') : '';
-            const hotspotsDetailsText = hotspotsDetailsB64 ? Buffer.from(hotspotsDetailsB64, 'base64').toString('utf8') : '';
+            try {
+              const bugsDetailsB64 = process.env.BUGS_DETAILS || '';
+              const vulnsDetailsB64 = process.env.VULNS_DETAILS || '';
+              const codeSmellsDetailsB64 = process.env.CODE_SMELLS_DETAILS || '';
+              const hotspotsDetailsB64 = process.env.HOTSPOTS_DETAILS || '';
 
-            const bugsDetails = bugsDetailsText.trim() ? bugsDetailsText.split('\n').filter(line => line.trim()) : [];
-            const vulnsDetails = vulnsDetailsText.trim() ? vulnsDetailsText.split('\n').filter(line => line.trim()) : [];
-            const codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split('\n').filter(line => line.trim()) : [];
-            const hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split('\n').filter(line => line.trim()) : [];
+              console.log(`Base64 lengths - Bugs: ${bugsDetailsB64.length}, Vulns: ${vulnsDetailsB64.length}, Code Smells: ${codeSmellsDetailsB64.length}, Hotspots: ${hotspotsDetailsB64.length}`);
 
-            console.log(`Found ${bugsDetails.length} bugs, ${vulnsDetails.length} vulnerabilities, ${codeSmellsDetails.length} code smells, ${hotspotsDetails.length} security hotspots`);
+              // Decode base64 and split into lines
+              const bugsDetailsText = bugsDetailsB64 ? Buffer.from(bugsDetailsB64, 'base64').toString('utf8') : '';
+              const vulnsDetailsText = vulnsDetailsB64 ? Buffer.from(vulnsDetailsB64, 'base64').toString('utf8') : '';
+              const codeSmellsDetailsText = codeSmellsDetailsB64 ? Buffer.from(codeSmellsDetailsB64, 'base64').toString('utf8') : '';
+              const hotspotsDetailsText = hotspotsDetailsB64 ? Buffer.from(hotspotsDetailsB64, 'base64').toString('utf8') : '';
+
+              bugsDetails = bugsDetailsText.trim() ? bugsDetailsText.split('\n').filter(line => line.trim()) : [];
+              vulnsDetails = vulnsDetailsText.trim() ? vulnsDetailsText.split('\n').filter(line => line.trim()) : [];
+              codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split('\n').filter(line => line.trim()) : [];
+              hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split('\n').filter(line => line.trim()) : [];
+
+              console.log(`Found ${bugsDetails.length} bugs, ${vulnsDetails.length} vulnerabilities, ${codeSmellsDetails.length} code smells, ${hotspotsDetails.length} security hotspots`);
+            } catch (error) {
+              console.error('Error decoding issue details:', error.message);
+              console.error('Stack:', error.stack);
+            }
 
             const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
 
