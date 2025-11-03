@@ -92,8 +92,11 @@ jobs:
           BUGS_COUNT=$(echo "$BUGS_RESPONSE" | jq -r '.total // 0')
           echo "bugs=$BUGS_COUNT" >> $GITHUB_OUTPUT
 
-          # Extract bug details
-          echo "$BUGS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/bugs.txt
+          # Extract bug details and save to output
+          BUGS_DETAILS=$(echo "$BUGS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50)
+          echo "bugs_details<<EOF" >> $GITHUB_OUTPUT
+          echo "$BUGS_DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
           # Fetch detailed issues - Vulnerabilities
           VULNS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
@@ -102,8 +105,11 @@ jobs:
           VULNS_COUNT=$(echo "$VULNS_RESPONSE" | jq -r '.total // 0')
           echo "vulnerabilities=$VULNS_COUNT" >> $GITHUB_OUTPUT
 
-          # Extract vulnerability details
-          echo "$VULNS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/vulnerabilities.txt
+          # Extract vulnerability details and save to output
+          VULNS_DETAILS=$(echo "$VULNS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50)
+          echo "vulns_details<<EOF" >> $GITHUB_OUTPUT
+          echo "$VULNS_DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
           # Fetch detailed issues - Code Smells (limit to top 20)
           CODE_SMELLS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
@@ -112,8 +118,11 @@ jobs:
           CODE_SMELLS_COUNT=$(echo "$CODE_SMELLS_RESPONSE" | jq -r '.total // 0')
           echo "code_smells=$CODE_SMELLS_COUNT" >> $GITHUB_OUTPUT
 
-          # Extract code smell details (top 20)
-          echo "$CODE_SMELLS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/code_smells.txt
+          # Extract code smell details (top 20) and save to output
+          CODE_SMELLS_DETAILS=$(echo "$CODE_SMELLS_RESPONSE" | jq -r '.issues[] | "[\(.severity)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -20)
+          echo "code_smells_details<<EOF" >> $GITHUB_OUTPUT
+          echo "$CODE_SMELLS_DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
           # Fetch Security Hotspots
           HOTSPOTS_RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
@@ -122,8 +131,11 @@ jobs:
           HOTSPOTS_COUNT=$(echo "$HOTSPOTS_RESPONSE" | jq -r '.paging.total // 0')
           echo "security_hotspots=$HOTSPOTS_COUNT" >> $GITHUB_OUTPUT
 
-          # Extract security hotspot details
-          echo "$HOTSPOTS_RESPONSE" | jq -r '.hotspots[]? | "[\(.vulnerabilityProbability)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' > /tmp/security_hotspots.txt
+          # Extract security hotspot details and save to output
+          HOTSPOTS_DETAILS=$(echo "$HOTSPOTS_RESPONSE" | jq -r '.hotspots[]? | "[\(.vulnerabilityProbability)] \(.message) - \(.component | split(":") | last) (Line \(.line // "N/A"))"' | head -50)
+          echo "hotspots_details<<EOF" >> $GITHUB_OUTPUT
+          echo "$HOTSPOTS_DETAILS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check Quality Gate
         id: quality-gate
@@ -137,7 +149,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
             const jiraUrl = process.env.JIRA_URL;
             const jiraEmail = process.env.JIRA_EMAIL;
             const jiraToken = process.env.JIRA_API_TOKEN;
@@ -150,32 +161,18 @@ jobs:
             const codeSmells = process.env.CODE_SMELLS || '0';
             const securityHotspots = process.env.SECURITY_HOTSPOTS || '0';
 
-            // Read detailed issue information from files
-            let bugsDetails = [];
-            let vulnsDetails = [];
-            let codeSmellsDetails = [];
-            let hotspotsDetails = [];
+            // Get detailed issue information from environment variables
+            const bugsDetailsText = process.env.BUGS_DETAILS || '';
+            const vulnsDetailsText = process.env.VULNS_DETAILS || '';
+            const codeSmellsDetailsText = process.env.CODE_SMELLS_DETAILS || '';
+            const hotspotsDetailsText = process.env.HOTSPOTS_DETAILS || '';
 
-            try {
-              if (fs.existsSync('/tmp/bugs.txt')) {
-                const bugsText = fs.readFileSync('/tmp/bugs.txt', 'utf8').trim();
-                if (bugsText) bugsDetails = bugsText.split('\n').filter(line => line.trim());
-              }
-              if (fs.existsSync('/tmp/vulnerabilities.txt')) {
-                const vulnsText = fs.readFileSync('/tmp/vulnerabilities.txt', 'utf8').trim();
-                if (vulnsText) vulnsDetails = vulnsText.split('\n').filter(line => line.trim());
-              }
-              if (fs.existsSync('/tmp/code_smells.txt')) {
-                const codeSmellsText = fs.readFileSync('/tmp/code_smells.txt', 'utf8').trim();
-                if (codeSmellsText) codeSmellsDetails = codeSmellsText.split('\n').filter(line => line.trim());
-              }
-              if (fs.existsSync('/tmp/security_hotspots.txt')) {
-                const hotspotsText = fs.readFileSync('/tmp/security_hotspots.txt', 'utf8').trim();
-                if (hotspotsText) hotspotsDetails = hotspotsText.split('\n').filter(line => line.trim());
-              }
-            } catch (error) {
-              console.log('Error reading issue details:', error.message);
-            }
+            const bugsDetails = bugsDetailsText.trim() ? bugsDetailsText.split('\n').filter(line => line.trim()) : [];
+            const vulnsDetails = vulnsDetailsText.trim() ? vulnsDetailsText.split('\n').filter(line => line.trim()) : [];
+            const codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split('\n').filter(line => line.trim()) : [];
+            const hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split('\n').filter(line => line.trim()) : [];
+
+            console.log(`Found ${bugsDetails.length} bugs, ${vulnsDetails.length} vulnerabilities, ${codeSmellsDetails.length} code smells, ${hotspotsDetails.length} security hotspots`);
 
             const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
 
@@ -451,4 +448,8 @@ jobs:
           VULNERABILITIES: ${{ steps.sonar-details.outputs.vulnerabilities }}
           CODE_SMELLS: ${{ steps.sonar-details.outputs.code_smells }}
           SECURITY_HOTSPOTS: ${{ steps.sonar-details.outputs.security_hotspots }}
+          BUGS_DETAILS: ${{ steps.sonar-details.outputs.bugs_details }}
+          VULNS_DETAILS: ${{ steps.sonar-details.outputs.vulns_details }}
+          CODE_SMELLS_DETAILS: ${{ steps.sonar-details.outputs.code_smells_details }}
+          HOTSPOTS_DETAILS: ${{ steps.sonar-details.outputs.hotspots_details }}
 
