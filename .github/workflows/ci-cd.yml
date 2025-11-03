@@ -58,10 +58,52 @@ jobs:
             -Dsonar.qualitygate.wait=true
           SONAR_EXIT_CODE=$?
           echo "sonar_exit_code=$SONAR_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Extract task ID from Maven output
+          TASK_ID=$(grep -oP 'ceTaskId=\K[^,}]+' target/sonar/report-task.txt | head -1)
+          echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+
           if [ $SONAR_EXIT_CODE -ne 0 ]; then
             echo "SonarQube quality gate failed with exit code $SONAR_EXIT_CODE"
             exit 1
           fi
+
+      - name: Fetch SonarQube Quality Gate Details
+        id: sonar-details
+        if: always() && steps.sonar-scan.outputs.sonar_exit_code != '0'
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          # Fetch quality gate status from SonarCloud API
+          RESPONSE=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=alokpandey_agent_sdlc")
+
+          echo "Quality Gate Response: $RESPONSE"
+
+          # Extract status and conditions
+          STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status // "UNKNOWN"')
+          echo "quality_gate_status=$STATUS" >> $GITHUB_OUTPUT
+
+          # Extract failed conditions
+          FAILED_CONDITIONS=$(echo "$RESPONSE" | jq -r '.projectStatus.conditions[] | select(.status == "ERROR") | "- \(.metricKey): \(.actualValue) (threshold: \(.errorThreshold))"' | head -10)
+
+          # Save to file for multiline output
+          echo "$FAILED_CONDITIONS" > /tmp/failed_conditions.txt
+
+          # Also get issue counts
+          ISSUES=$(curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=alokpandey_agent_sdlc&resolved=false&ps=1&facets=severities,types")
+
+          BUGS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "BUG") | .count // 0')
+          VULNERABILITIES=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "VULNERABILITY") | .count // 0')
+          CODE_SMELLS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "CODE_SMELL") | .count // 0')
+          SECURITY_HOTSPOTS=$(echo "$ISSUES" | jq -r '.facets[] | select(.property == "types") | .values[] | select(.val == "SECURITY_HOTSPOT") | .count // 0')
+
+          echo "bugs=$BUGS" >> $GITHUB_OUTPUT
+          echo "vulnerabilities=$VULNERABILITIES" >> $GITHUB_OUTPUT
+          echo "code_smells=$CODE_SMELLS" >> $GITHUB_OUTPUT
+          echo "security_hotspots=$SECURITY_HOTSPOTS" >> $GITHUB_OUTPUT
 
       - name: Check Quality Gate
         id: quality-gate
@@ -80,7 +122,165 @@ jobs:
             const jiraToken = process.env.JIRA_API_TOKEN;
             const projectKey = process.env.JIRA_PROJECT_KEY;
 
+            // Get SonarQube details from previous step
+            const qgStatus = process.env.QG_STATUS || 'FAILED';
+            const bugs = process.env.BUGS || '0';
+            const vulnerabilities = process.env.VULNERABILITIES || '0';
+            const codeSmells = process.env.CODE_SMELLS || '0';
+            const securityHotspots = process.env.SECURITY_HOTSPOTS || '0';
+
             const auth = Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64');
+
+            // Build description content
+            const descriptionContent = [
+              {
+                type: "heading",
+                attrs: { level: 2 },
+                content: [{ type: "text", text: "Quality Gate Failure Summary" }]
+              },
+              {
+                type: "paragraph",
+                content: [
+                  { type: "text", text: "SonarQube quality gate ", marks: [{ type: "strong" }] },
+                  { type: "text", text: qgStatus, marks: [{ type: "strong" }, { type: "textColor", attrs: { color: "#DE350B" } }] },
+                  { type: "text", text: ` for commit ${context.sha.substring(0, 7)}` }
+                ]
+              },
+              {
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: "Issue Summary" }]
+              },
+              {
+                type: "bulletList",
+                content: [
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "🐛 Bugs: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: bugs }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "🔒 Vulnerabilities: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: vulnerabilities }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "⚠️ Security Hotspots: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: securityHotspots }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "💡 Code Smells: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: codeSmells }
+                      ]
+                    }]
+                  }
+                ]
+              },
+              {
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: "Details" }]
+              },
+              {
+                type: "bulletList",
+                content: [
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "Repository: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: `${context.repo.owner}/${context.repo.repo}` }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "Branch: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: context.ref.replace('refs/heads/', '') }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "Commit: ", marks: [{ type: "strong" }] },
+                        { type: "text", text: context.sha }
+                      ]
+                    }]
+                  }
+                ]
+              },
+              {
+                type: "heading",
+                attrs: { level: 3 },
+                content: [{ type: "text", text: "Links" }]
+              },
+              {
+                type: "bulletList",
+                content: [
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "GitHub Action: ", marks: [{ type: "strong" }] },
+                        {
+                          type: "text",
+                          text: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                          marks: [{
+                            type: "link",
+                            attrs: { href: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` }
+                          }]
+                        }
+                      ]
+                    }]
+                  },
+                  {
+                    type: "listItem",
+                    content: [{
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "SonarCloud Dashboard: ", marks: [{ type: "strong" }] },
+                        {
+                          type: "text",
+                          text: "View in SonarCloud",
+                          marks: [{
+                            type: "link",
+                            attrs: { href: `https://sonarcloud.io/dashboard?id=alokpandey_agent_sdlc` }
+                          }]
+                        }
+                      ]
+                    }]
+                  }
+                ]
+              }
+            ];
 
             const issueData = {
               fields: {
@@ -91,53 +291,7 @@ jobs:
                 description: {
                   type: "doc",
                   version: 1,
-                  content: [
-                    {
-                      type: "paragraph",
-                      content: [
-                        {
-                          type: "text",
-                          text: `SonarQube quality gate failed for commit ${context.sha}`
-                        }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        {
-                          type: "text",
-                          text: `Repository: ${context.repo.owner}/${context.repo.repo}`
-                        }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        {
-                          type: "text",
-                          text: `Branch: ${context.ref}`
-                        }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        {
-                          type: "text",
-                          text: `Commit: ${context.sha}`
-                        }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        {
-                          type: "text",
-                          text: `Action: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-                        }
-                      ]
-                    }
-                  ]
+                  content: descriptionContent
                 },
                 issuetype: {
                   name: "Bug"
@@ -176,4 +330,9 @@ jobs:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+          QG_STATUS: ${{ steps.sonar-details.outputs.quality_gate_status }}
+          BUGS: ${{ steps.sonar-details.outputs.bugs }}
+          VULNERABILITIES: ${{ steps.sonar-details.outputs.vulnerabilities }}
+          CODE_SMELLS: ${{ steps.sonar-details.outputs.code_smells }}
+          SECURITY_HOTSPOTS: ${{ steps.sonar-details.outputs.security_hotspots }}
 
