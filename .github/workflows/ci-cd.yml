@@ -147,11 +147,11 @@ jobs:
             const projectKey = process.env.JIRA_PROJECT_KEY;
 
             // Get SonarQube details from previous step
-            const qgStatus = process.env.QG_STATUS || 'FAILED';
-            const bugs = process.env.BUGS || '0';
-            const vulnerabilities = process.env.VULNERABILITIES || '0';
-            const codeSmells = process.env.CODE_SMELLS || '0';
-            const securityHotspots = process.env.SECURITY_HOTSPOTS || '0';
+            const qgStatus = process.env.QG_STATUS || "FAILED";
+            const bugs = process.env.BUGS || "0";
+            const vulnerabilities = process.env.VULNERABILITIES || "0";
+            const codeSmells = process.env.CODE_SMELLS || "0";
+            const securityHotspots = process.env.SECURITY_HOTSPOTS || "0";
 
             // Get detailed issue information from environment variables (base64 encoded)
             let bugsDetails = [];
@@ -160,31 +160,31 @@ jobs:
             let hotspotsDetails = [];
 
             try {
-              const bugsDetailsB64 = process.env.BUGS_DETAILS || '';
-              const vulnsDetailsB64 = process.env.VULNS_DETAILS || '';
-              const codeSmellsDetailsB64 = process.env.CODE_SMELLS_DETAILS || '';
-              const hotspotsDetailsB64 = process.env.HOTSPOTS_DETAILS || '';
+              const bugsDetailsB64 = process.env.BUGS_DETAILS || "";
+              const vulnsDetailsB64 = process.env.VULNS_DETAILS || "";
+              const codeSmellsDetailsB64 = process.env.CODE_SMELLS_DETAILS || "";
+              const hotspotsDetailsB64 = process.env.HOTSPOTS_DETAILS || "";
 
               console.log("Base64 lengths - Bugs: " + bugsDetailsB64.length + ", Vulns: " + vulnsDetailsB64.length + ", Code Smells: " + codeSmellsDetailsB64.length + ", Hotspots: " + hotspotsDetailsB64.length);
 
               // Decode base64 and split into lines
-              const bugsDetailsText = bugsDetailsB64 ? Buffer.from(bugsDetailsB64, 'base64').toString('utf8') : '';
-              const vulnsDetailsText = vulnsDetailsB64 ? Buffer.from(vulnsDetailsB64, 'base64').toString('utf8') : '';
-              const codeSmellsDetailsText = codeSmellsDetailsB64 ? Buffer.from(codeSmellsDetailsB64, 'base64').toString('utf8') : '';
-              const hotspotsDetailsText = hotspotsDetailsB64 ? Buffer.from(hotspotsDetailsB64, 'base64').toString('utf8') : '';
+              const bugsDetailsText = bugsDetailsB64 ? Buffer.from(bugsDetailsB64, "base64").toString("utf8") : "";
+              const vulnsDetailsText = vulnsDetailsB64 ? Buffer.from(vulnsDetailsB64, "base64").toString("utf8") : "";
+              const codeSmellsDetailsText = codeSmellsDetailsB64 ? Buffer.from(codeSmellsDetailsB64, "base64").toString("utf8") : "";
+              const hotspotsDetailsText = hotspotsDetailsB64 ? Buffer.from(hotspotsDetailsB64, "base64").toString("utf8") : "";
 
-              bugsDetails = bugsDetailsText.trim() ? bugsDetailsText.split('\n').filter(line => line.trim()) : [];
-              vulnsDetails = vulnsDetailsText.trim() ? vulnsDetailsText.split('\n').filter(line => line.trim()) : [];
-              codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split('\n').filter(line => line.trim()) : [];
-              hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split('\n').filter(line => line.trim()) : [];
+              bugsDetails = bugsDetailsText.trim() ? bugsDetailsText.split("\n").filter(line => line.trim()) : [];
+              vulnsDetails = vulnsDetailsText.trim() ? vulnsDetailsText.split("\n").filter(line => line.trim()) : [];
+              codeSmellsDetails = codeSmellsDetailsText.trim() ? codeSmellsDetailsText.split("\n").filter(line => line.trim()) : [];
+              hotspotsDetails = hotspotsDetailsText.trim() ? hotspotsDetailsText.split("\n").filter(line => line.trim()) : [];
 
               console.log("Found " + bugsDetails.length + " bugs, " + vulnsDetails.length + " vulnerabilities, " + codeSmellsDetails.length + " code smells, " + hotspotsDetails.length + " security hotspots");
             } catch (error) {
-              console.error('Error decoding issue details:', error.message);
-              console.error('Stack:', error.stack);
+              console.error("Error decoding issue details:", error.message);
+              console.error("Stack:", error.stack);
             }
 
-            const auth = Buffer.from(jiraEmail + ":" + jiraToken).toString('base64');
+            const auth = Buffer.from(jiraEmail + ":" + jiraToken).toString("base64");
 
             // Helper function to create issue list items
             const createIssueListItems = (issues) => {
@@ -427,10 +427,10 @@ jobs:
               const response = await fetch(
                 jiraUrl + "/rest/api/3/issue",
                 {
-                  method: 'POST',
+                  method: "POST",
                   headers: {
-                    'Authorization': 'Basic ' + auth,
-                    'Content-Type': 'application/json'
+                    "Authorization": "Basic " + auth,
+                    "Content-Type": "application/json"
                   },
                   body: JSON.stringify(issueData)
                 }
@@ -443,9 +443,9 @@ jobs:
 
               const data = await response.json();
               console.log("JIRA ticket created: " + data.key);
-              core.setOutput('jira-ticket', data.key);
+              core.setOutput("jira-ticket", data.key);
             } catch (error) {
-              console.error('Failed to create JIRA ticket:', error.message);
+              console.error("Failed to create JIRA ticket:", error.message);
               throw error;
             }
         env:
