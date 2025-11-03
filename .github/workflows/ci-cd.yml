@@ -269,7 +269,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: "🐛 Bugs (" + bugs + ")" }]
+                content: [{ type: "text", text: "Bugs (" + bugs + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -282,7 +282,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: "🔒 Vulnerabilities (" + vulnerabilities + ")" }]
+                content: [{ type: "text", text: "Vulnerabilities (" + vulnerabilities + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -295,7 +295,7 @@ jobs:
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
-                content: [{ type: "text", text: "⚠️ Security Hotspots (" + securityHotspots + ")" }]
+                content: [{ type: "text", text: "Security Hotspots (" + securityHotspots + ")" }]
               });
               descriptionContent.push({
                 type: "bulletList",
@@ -305,7 +305,7 @@ jobs:
 
             // Add detailed code smells section (showing top 20)
             if (codeSmellsDetails.length > 0) {
-              const codeSmellsTitle = codeSmells > 20 ? "💡 Code Smells (showing 20 of " + codeSmells + ")" : "💡 Code Smells (" + codeSmells + ")";
+              const codeSmellsTitle = codeSmells > 20 ? "Code Smells (showing 20 of " + codeSmells + ")" : "Code Smells (" + codeSmells + ")";
               descriptionContent.push({
                 type: "heading",
                 attrs: { level: 3 },
