@@ -24,10 +24,10 @@ class JiraMonitorAgent {
    * Start monitoring JIRA tickets
    */
   async start() {
-    console.log('🤖 JIRA Monitor Agent started...');
+    console.log('JIRA Monitor Agent started...');
     console.log(`   Monitoring project: ${this.config.jiraProjectKey}`);
     console.log(`   Poll interval: ${this.config.pollInterval}ms`);
-    console.log(`   OpenAI Model: ${this.config.openaiModel}`);
+    console.log(`   AI Model: ${this.config.openaiModel}`);
 
     // Initial poll
     await this.pollJiraTickets();
@@ -59,7 +59,7 @@ class JiraMonitorAgent {
       );
 
       const tickets = response.data.issues || [];
-      console.log(`\n📋 Found ${tickets.length} tickets in "To Do" status with required labels`);
+      console.log(`\nFound ${tickets.length} tickets in "To Do" status with required labels`);
 
       for (const ticket of tickets) {
         if (!this.processedTickets.has(ticket.key)) {
@@ -68,7 +68,7 @@ class JiraMonitorAgent {
         }
       }
     } catch (error) {
-      console.error('❌ Error polling JIRA:', error.response?.data || error.message);
+      console.error('Error polling JIRA:', error.response?.data || error.message);
     }
   }
 
@@ -76,7 +76,7 @@ class JiraMonitorAgent {
    * Process a JIRA ticket and create a fix
    */
   async processTicket(ticket) {
-    console.log(`\n🔧 Processing ticket: ${ticket.key}`);
+    console.log(`\nProcessing ticket: ${ticket.key}`);
     console.log(`   Summary: ${ticket.fields.summary}`);
 
     try {
@@ -85,7 +85,7 @@ class JiraMonitorAgent {
 
       // Parse issues from JIRA description
       const issues = await this.parseJiraDescription(ticket);
-      console.log(`   📝 Found ${issues.bugs.length} bugs, ${issues.vulnerabilities.length} vulnerabilities`);
+      console.log(`   Found ${issues.bugs.length} bugs, ${issues.vulnerabilities.length} vulnerabilities`);
 
       // Clone the repository
       const repoPath = await this.cloneRepository();
@@ -99,12 +99,12 @@ class JiraMonitorAgent {
       // Add comment to JIRA ticket with PR link
       await this.addJiraComment(ticket.key, `Automated fix created: ${pr.html_url}`);
 
-      console.log(`✅ Successfully created PR for ${ticket.key}: ${pr.html_url}`);
+      console.log(`Successfully created PR for ${ticket.key}: ${pr.html_url}`);
 
       // Cleanup
       await this.cleanup(repoPath);
     } catch (error) {
-      console.error(`❌ Error processing ticket ${ticket.key}:`, error.message);
+      console.error(`Error processing ticket ${ticket.key}:`, error.message);
       console.error(error.stack);
       await this.addJiraComment(ticket.key, `Failed to create automated fix: ${error.message}`);
     }
@@ -187,7 +187,7 @@ class JiraMonitorAgent {
    * Clone the Git repository
    */
   async cloneRepository() {
-    console.log('   📦 Cloning repository...');
+    console.log('   Cloning repository...');
 
     const [owner, repo] = this.config.githubRepo.split('/');
     const repoUrl = `https://${this.config.githubToken}@github.com/${owner}/${repo}.git`;
@@ -205,16 +205,16 @@ class JiraMonitorAgent {
 
     // Clone repository
     execSync(`git clone ${repoUrl} ${repoPath}`, { stdio: 'inherit' });
-    console.log(`   ✓ Repository cloned to ${repoPath}`);
+    console.log(`   Repository cloned to ${repoPath}`);
 
     return repoPath;
   }
 
   /**
-   * Generate fixes for all issues using OpenAI API
+   * Generate fixes for all issues using AI API
    */
   async generateFixesWithOpenAI(issues, repoPath) {
-    console.log('   🤖 Generating fixes with OpenAI...');
+    console.log('   Generating fixes with AI...');
 
     const fixes = [];
     const allIssues = [
@@ -252,9 +252,9 @@ class JiraMonitorAgent {
           reason: `Fix ${fileIssues.length} issue(s): ${fileIssues.map(i => i.type).join(', ')}`
         });
 
-        console.log(`   ✓ Generated fix for ${filePath} (${fileIssues.length} issues)`);
+        console.log(`   Generated fix for ${filePath} (${fileIssues.length} issues)`);
       } catch (error) {
-        console.error(`   ✗ Failed to generate fix for ${filePath}:`, error.message);
+        console.error(`   Failed to generate fix for ${filePath}:`, error.message);
       }
     }
 
@@ -334,7 +334,7 @@ Fixed code:`;
    * Create a pull request with the fixes
    */
   async createPullRequest(ticket, fixes, repoPath) {
-    console.log('   🔀 Creating pull request...');
+    console.log('   Creating pull request...');
 
     const branchName = `fix/${ticket.key.toLowerCase()}-sonarqube-issues`;
     const [owner, repo] = this.config.githubRepo.split('/');
@@ -346,9 +346,9 @@ Fixed code:`;
     // Create and checkout new branch in local repo
     try {
       execSync(`git checkout -b ${branchName}`, { cwd: repoPath, stdio: 'inherit' });
-      console.log(`   ✓ Created local branch: ${branchName}`);
+      console.log(`   Created local branch: ${branchName}`);
     } catch (error) {
-      console.log(`   ℹ Branch ${branchName} may already exist, checking out...`);
+      console.log(`   Branch ${branchName} may already exist, checking out...`);
       execSync(`git checkout ${branchName}`, { cwd: repoPath, stdio: 'inherit' });
     }
 
@@ -358,14 +358,14 @@ Fixed code:`;
 
       if (fix.action === 'update') {
         await fs.writeFile(fullPath, fix.content, 'utf-8');
-        console.log(`   ✓ Updated: ${fix.file}`);
+        console.log(`   Updated: ${fix.file}`);
       } else if (fix.action === 'delete') {
         await fs.unlink(fullPath);
-        console.log(`   ✓ Deleted: ${fix.file}`);
+        console.log(`   Deleted: ${fix.file}`);
       } else if (fix.action === 'create') {
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, fix.content, 'utf-8');
-        console.log(`   ✓ Created: ${fix.file}`);
+        console.log(`   Created: ${fix.file}`);
       }
     }
 
@@ -380,11 +380,11 @@ ${fixes.map(f => `- ${f.reason}`).join('\n')}
 JIRA: ${this.config.jiraUrl}/browse/${ticket.key}`;
 
     execSync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, { cwd: repoPath, stdio: 'inherit' });
-    console.log('   ✓ Committed changes');
+    console.log('   Committed changes');
 
     // Push branch
     execSync(`git push origin ${branchName}`, { cwd: repoPath, stdio: 'inherit' });
-    console.log('   ✓ Pushed branch to remote');
+    console.log('   Pushed branch to remote');
 
     // Create pull request via GitHub API
     const { data: pr } = await this.octokit.pulls.create({
@@ -398,7 +398,7 @@ JIRA: ${this.config.jiraUrl}/browse/${ticket.key}`;
 This PR addresses the SonarQube quality gate failures identified in [${ticket.key}](${this.config.jiraUrl}/browse/${ticket.key}).
 
 ### Changes:
-${fixes.map(f => `- 🔧 **${f.file}**: ${f.reason}`).join('\n')}
+${fixes.map(f => `- **${f.file}**: ${f.reason}`).join('\n')}
 
 ### Issues Fixed:
 ${fixes.map(f => f.issues ? f.issues.map(i => `  - [${i.severity}] ${i.type}: ${i.message} (Line ${i.line || 'N/A'})`).join('\n') : '').join('\n')}
@@ -408,12 +408,12 @@ ${fixes.map(f => f.issues ? f.issues.map(i => `  - [${i.severity}] ${i.type}: ${
 - **Summary**: ${ticket.fields.summary}
 
 ---
-🤖 This PR was automatically generated by the JIRA Monitor Agent using OpenAI ${this.config.openaiModel}.
+This PR was automatically generated by the JIRA Monitor Agent using AI model ${this.config.openaiModel}.
 Please review and approve if the changes look correct.
 `
     });
 
-    console.log(`   ✓ Created PR: ${pr.html_url}`);
+    console.log(`   Created PR: ${pr.html_url}`);
     return pr;
   }
 
@@ -423,9 +423,9 @@ Please review and approve if the changes look correct.
   async cleanup(repoPath) {
     try {
       await fs.rm(repoPath, { recursive: true, force: true });
-      console.log('   ✓ Cleaned up workspace');
+      console.log('   Cleaned up workspace');
     } catch (error) {
-      console.error('   ⚠️  Failed to cleanup workspace:', error.message);
+      console.error('   Failed to cleanup workspace:', error.message);
     }
   }
 
@@ -463,12 +463,12 @@ Please review and approve if the changes look correct.
             }
           }
         );
-        console.log(`   ✓ Updated ${ticketKey} status to: ${statusName}`);
+        console.log(`   Updated ${ticketKey} status to: ${statusName}`);
       } else {
-        console.log(`   ⚠️  Transition to "${statusName}" not found for ${ticketKey}`);
+        console.log(`   Transition to "${statusName}" not found for ${ticketKey}`);
       }
     } catch (error) {
-      console.error(`   ✗ Failed to update status:`, error.response?.data || error.message);
+      console.error(`   Failed to update status:`, error.response?.data || error.message);
     }
   }
 
@@ -503,9 +503,9 @@ Please review and approve if the changes look correct.
           }
         }
       );
-      console.log(`   ✓ Added comment to ${ticketKey}`);
+      console.log(`   Added comment to ${ticketKey}`);
     } catch (error) {
-      console.error(`   ✗ Failed to add comment:`, error.response?.data || error.message);
+      console.error(`   Failed to add comment:`, error.response?.data || error.message);
     }
   }
 }
@@ -529,7 +529,7 @@ if (require.main === module) {
   const missing = required.filter(key => !config[key]);
 
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:', missing.join(', '));
+    console.error('Missing required environment variables:', missing.join(', '));
     process.exit(1);
   }
 
