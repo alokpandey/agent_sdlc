@@ -43,10 +43,14 @@ class JiraMonitorAgent {
     try {
       const jql = `project = ${this.config.jiraProjectKey} AND labels = "sonarqube" AND labels = "auto-generated" AND labels = "quality-gate-failure" AND status = "To Do"`;
 
-      const response = await axios.get(
-        `${this.config.jiraUrl}/rest/api/3/search`,
+      const response = await axios.post(
+        `${this.config.jiraUrl}/rest/api/3/search/jql`,
         {
-          params: { jql, maxResults: 50, fields: 'summary,description,status,labels' },
+          jql: jql,
+          maxResults: 50,
+          fields: ['summary', 'description', 'status', 'labels']
+        },
+        {
           headers: {
             'Authorization': `Basic ${this.jiraAuth}`,
             'Content-Type': 'application/json'
@@ -54,7 +58,7 @@ class JiraMonitorAgent {
         }
       );
 
-      const tickets = response.data.issues;
+      const tickets = response.data.issues || [];
       console.log(`\n📋 Found ${tickets.length} tickets in "To Do" status with required labels`);
 
       for (const ticket of tickets) {
