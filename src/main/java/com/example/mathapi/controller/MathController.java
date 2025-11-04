@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,15 +19,16 @@ import java.util.Map;
 @RequestMapping("/api/math")
 public class MathController {
 
+    private static final String DB_PASSWORD = System.getenv("DB_PASSWORD");
+    private static final String INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error: ";
+
+    private final MathService mathService;
+
     @Autowired
-    private MathService mathService;
+    public MathController(MathService mathService) {
+        this.mathService = mathService;
+    }
 
-    // VULNERABILITY 1: Hardcoded database password (BLOCKER)
-    private static final String DB_PASSWORD = "SuperSecret123!";
-
-    /**
-     * Validates the request object
-     */
     private void validateRequest(MathRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Request body cannot be null");
@@ -42,7 +44,7 @@ public class MathController {
         } catch (IllegalArgumentException | ArithmeticException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            return createErrorResponse("Internal server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse(INTERNAL_SERVER_ERROR_MESSAGE + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -55,7 +57,7 @@ public class MathController {
         } catch (IllegalArgumentException | ArithmeticException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            return createErrorResponse("Internal server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse(INTERNAL_SERVER_ERROR_MESSAGE + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -68,7 +70,7 @@ public class MathController {
         } catch (IllegalArgumentException | ArithmeticException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            return createErrorResponse("Internal server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse(INTERNAL_SERVER_ERROR_MESSAGE + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -81,42 +83,38 @@ public class MathController {
         } catch (IllegalArgumentException | ArithmeticException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            return createErrorResponse("Internal server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse(INTERNAL_SERVER_ERROR_MESSAGE + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // VULNERABILITY 2: SQL Injection (BLOCKER)
-    // BUG 1: Resource leak - Connection not closed (BLOCKER)
     @GetMapping("/history/{userId}")
     public ResponseEntity<?> getHistory(@PathVariable String userId) {
-        try {
-            Connection conn = DriverManager.getConnection(
+        String query = "SELECT * FROM calculations WHERE user_id = ?";
+        Map<String, String> response = new HashMap<>();
+        try (Connection conn = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/mathdb",
                 "root",
-                DB_PASSWORD
-            );
-            Statement stmt = conn.createStatement();
-            // SQL Injection vulnerability - user input directly in query
-            String query = "SELECT * FROM calculations WHERE user_id = '" + userId + "'";
-            stmt.executeQuery(query);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "History retrieved for user: " + userId);
+                DB_PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                response.put("message", "History retrieved for user: " + userId);
+            }
             return ResponseEntity.ok(response);
-            // BUG: Connection and Statement never closed - resource leak
         } catch (Exception e) {
             return createErrorResponse("Database error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // VULNERABILITY 3: Command Injection (BLOCKER)
     @GetMapping("/export/{filename}")
     public ResponseEntity<?> exportResults(@PathVariable String filename) {
+        if (!isValidFilename(filename)) {
+            return createErrorResponse("Invalid filename", HttpStatus.BAD_REQUEST);
+        }
+        Map<String, String> response = new HashMap<>();
         try {
-            // Command injection vulnerability - user input in OS command
-            Runtime.getRuntime().exec("cat /var/log/math/" + filename + ".log");
-
-            Map<String, String> response = new HashMap<>();
+            ProcessBuilder processBuilder = new ProcessBuilder("cat", "/var/log/math/" + filename + ".log");
+            processBuilder.start();
             response.put("message", "Export completed for: " + filename);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -124,9 +122,10 @@ public class MathController {
         }
     }
 
-    /**
-     * Creates a standardized error response
-     */
+    private boolean isValidFilename(String filename) {
+        return filename.matches("[a-zA-Z0-9._-]+");
+    }
+
     private ResponseEntity<Map<String, String>> createErrorResponse(String message, HttpStatus status) {
         Map<String, String> error = new HashMap<>();
         error.put("error", message);
@@ -134,4 +133,3 @@ public class MathController {
         return ResponseEntity.status(status).body(error);
     }
 }
-
