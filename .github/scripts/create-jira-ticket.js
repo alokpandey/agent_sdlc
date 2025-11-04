@@ -67,6 +67,9 @@ const createIssueListItems = (issues) => {
 };
 
 // Build description content with issue summary
+// Convert ERROR to Error
+const displayStatus = qgStatus === "ERROR" ? "Error" : qgStatus;
+
 const descriptionContent = [
   {
     type: "heading",
@@ -77,7 +80,7 @@ const descriptionContent = [
     type: "paragraph",
     content: [
       { type: "text", text: "SonarQube quality gate ", marks: [{ type: "strong" }] },
-      { type: "text", text: qgStatus, marks: [{ type: "strong" }, { type: "textColor", attrs: { color: "#DE350B" } }] },
+      { type: "text", text: displayStatus, marks: [{ type: "strong" }] },
       { type: "text", text: " for commit " + context.sha.substring(0, 7) }
     ]
   },
@@ -95,7 +98,7 @@ const descriptionContent = [
           type: "paragraph",
           content: [
             { type: "text", text: "Bugs: ", marks: [{ type: "strong" }] },
-            { type: "text", text: bugs, marks: [{ type: "textColor", attrs: { color: "#DE350B" } }] }
+            { type: "text", text: bugs }
           ]
         }]
       },
@@ -105,7 +108,7 @@ const descriptionContent = [
           type: "paragraph",
           content: [
             { type: "text", text: "Vulnerabilities: ", marks: [{ type: "strong" }] },
-            { type: "text", text: vulnerabilities, marks: [{ type: "textColor", attrs: { color: "#DE350B" } }] }
+            { type: "text", text: vulnerabilities }
           ]
         }]
       },
@@ -115,7 +118,7 @@ const descriptionContent = [
           type: "paragraph",
           content: [
             { type: "text", text: "Security Hotspots: ", marks: [{ type: "strong" }] },
-            { type: "text", text: securityHotspots, marks: [{ type: "textColor", attrs: { color: "#FF991F" } }] }
+            { type: "text", text: securityHotspots }
           ]
         }]
       },
@@ -125,7 +128,7 @@ const descriptionContent = [
           type: "paragraph",
           content: [
             { type: "text", text: "Code Smells: ", marks: [{ type: "strong" }] },
-            { type: "text", text: codeSmells, marks: [{ type: "textColor", attrs: { color: "#FF991F" } }] }
+            { type: "text", text: codeSmells }
           ]
         }]
       }
