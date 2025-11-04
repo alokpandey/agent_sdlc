@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,6 +20,9 @@ public class MathController {
 
     @Autowired
     private MathService mathService;
+
+    // VULNERABILITY 1: Hardcoded database password (BLOCKER)
+    private static final String DB_PASSWORD = "SuperSecret123!";
 
     /**
      * Validates the request object
@@ -76,6 +82,45 @@ public class MathController {
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             return createErrorResponse("Internal server error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // VULNERABILITY 2: SQL Injection (BLOCKER)
+    // BUG 1: Resource leak - Connection not closed (BLOCKER)
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<?> getHistory(@PathVariable String userId) {
+        try {
+            Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/mathdb",
+                "root",
+                DB_PASSWORD
+            );
+            Statement stmt = conn.createStatement();
+            // SQL Injection vulnerability - user input directly in query
+            String query = "SELECT * FROM calculations WHERE user_id = '" + userId + "'";
+            stmt.executeQuery(query);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "History retrieved for user: " + userId);
+            return ResponseEntity.ok(response);
+            // BUG: Connection and Statement never closed - resource leak
+        } catch (Exception e) {
+            return createErrorResponse("Database error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // VULNERABILITY 3: Command Injection (BLOCKER)
+    @GetMapping("/export/{filename}")
+    public ResponseEntity<?> exportResults(@PathVariable String filename) {
+        try {
+            // Command injection vulnerability - user input in OS command
+            Runtime.getRuntime().exec("cat /var/log/math/" + filename + ".log");
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Export completed for: " + filename);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return createErrorResponse("Export error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
