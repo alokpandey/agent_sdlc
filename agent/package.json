@@ -1,7 +1,7 @@
 {
   "name": "jira-monitor-agent",
-  "version": "1.0.0",
-  "description": "Agent that monitors JIRA tickets and automatically creates fixes for SonarQube issues",
+  "version": "2.0.0",
+  "description": "Agent that monitors JIRA tickets and automatically creates fixes for SonarQube issues using OpenAI",
   "main": "jira-monitor-agent.js",
   "scripts": {
     "start": "node jira-monitor-agent.js",
@@ -11,7 +11,9 @@
     "jira",
     "sonarqube",
     "automation",
-    "ci-cd"
+    "ci-cd",
+    "openai",
+    "ai-fixes"
   ],
   "author": "",
   "license": "MIT",
