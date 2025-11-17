@@ -5,6 +5,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class MathService {
 
+    private static final String OPERAND_1 = "operand1";
+    private static final String OPERAND_2 = "operand2";
+
     /**
      * Validates that the input is a valid number (not NaN or Infinity)
      */
@@ -18,8 +21,8 @@ public class MathService {
     }
 
     public double add(double a, double b) {
-        validateInput(a, "operand1");
-        validateInput(b, "operand2");
+        validateInput(a, OPERAND_1);
+        validateInput(b, OPERAND_2);
 
         double result = a + b;
 
@@ -32,8 +35,8 @@ public class MathService {
     }
 
     public double subtract(double a, double b) {
-        validateInput(a, "operand1");
-        validateInput(b, "operand2");
+        validateInput(a, OPERAND_1);
+        validateInput(b, OPERAND_2);
 
         double result = a - b;
 
@@ -46,8 +49,8 @@ public class MathService {
     }
 
     public double multiply(double a, double b) {
-        validateInput(a, "operand1");
-        validateInput(b, "operand2");
+        validateInput(a, OPERAND_1);
+        validateInput(b, OPERAND_2);
 
         double result = a * b;
 
@@ -60,8 +63,8 @@ public class MathService {
     }
 
     public double divide(double a, double b) {
-        validateInput(a, "operand1");
-        validateInput(b, "operand2");
+        validateInput(a, OPERAND_1);
+        validateInput(b, OPERAND_2);
 
         // Check for division by zero
         if (b == 0.0) {
@@ -83,4 +86,3 @@ public class MathService {
         return result;
     }
 }
-
